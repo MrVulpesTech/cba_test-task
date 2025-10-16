@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+*.class
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+logs/
+*.log
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+*.swp
+.coverage
+htmlcov/
+.pytest_cache/
+app/db/migrations/__pycache__/
+**/.DS_Store
+
+# Ignore all markdown except README.md
+*.md
+!README.md
+
+# Cursor workspace
+.cursor/
