@@ -6,7 +6,12 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     environment: str = "development"
     log_level: str = "INFO"
@@ -25,6 +30,9 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: List[AnyHttpUrl] = []
+
+    # Uploads
+    max_upload_size_bytes: int = 10 * 1024 * 1024
 
 
 settings = Settings()

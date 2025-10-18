@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for FastAPI application
 
 # Stage 1: Builder
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -18,32 +18,16 @@ RUN apt-get update && apt-get install -y \
 # Create and set working directory
 WORKDIR /app
 
-# Copy dependency files required for build backend
 COPY pyproject.toml ./
 COPY README.md ./
+COPY app ./app
 
-# Install Python dependencies (explicit list until build config is added)
+# Install Python dependencies from pyproject (no editable)
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir \
-        fastapi==0.104.0 \
-        "uvicorn[standard]"==0.24.0 \
-        sqlalchemy==2.0.23 \
-        asyncpg==0.29.0 \
-        alembic==1.12.1 \
-        pydantic==2.5.0 \
-        pydantic-settings==2.1.0 \
-        email-validator==2.1.0.post1 \
-        "python-jose[cryptography]"==3.3.0 \
-        "passlib[bcrypt]"==1.7.4 \
-        bcrypt==4.0.1 \
-        python-multipart==0.0.6 \
-        httpx==0.25.2 \
-        structlog==23.2.0 \
-        asgi-correlation-id==4.0.0 \
-        python-dotenv==1.0.0
+    pip install --no-cache-dir .
 
 # Stage 2: Runtime
-FROM python:3.12-slim as runtime
+FROM python:3.12-slim AS runtime
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -66,8 +50,7 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
-COPY app/ ./app/
+# Copy application code (alembic config)
 COPY alembic.ini ./
 
 # Create necessary directories

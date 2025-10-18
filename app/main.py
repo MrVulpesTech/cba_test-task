@@ -1,10 +1,15 @@
-# FastAPI application with health checks and CORS configuration
+# FastAPI app setup with routers, request-id middleware, logging, and exception handling.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from datetime import datetime
+from app.core.logging import configure_logging
+from app.middlewares.request_id import add_request_id_middleware
+from app.core.exceptions import register_exception_handlers
+
+configure_logging()
 
 app = FastAPI(
     title="Book Management System",
@@ -16,6 +21,9 @@ app = FastAPI(
 )
 
 # CORS middleware
+add_request_id_middleware(app)
+register_exception_handlers(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:8080"],

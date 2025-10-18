@@ -26,14 +26,14 @@ A book management system built with FastAPI and PostgreSQL, featuring JWT authen
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd book-management-system
+   git clone https://github.com/MrVulpesTech/cba_test-task.git
+   cd cba_test-task
    ```
 
 2. **Set up environment variables**
    ```bash
    cp .env.example .env
-   # Edit .env with your preferred settings
+   # Edit .env with preferred settings
    ```
 
 3. **Start the application**
@@ -50,7 +50,7 @@ A book management system built with FastAPI and PostgreSQL, featuring JWT authen
    - API: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
    - ReDoc: http://localhost:8000/redoc
-   - pgAdmin (optional): http://localhost:5050
+   - pgAdmin: http://localhost:5050 (start with: `docker compose --profile tools up -d pgadmin`)
 
 ### Local Development
 
@@ -98,6 +98,78 @@ A book management system built with FastAPI and PostgreSQL, featuring JWT authen
 ### Health
 - `GET /healthz` - Health check
 - `GET /health` - Detailed health check
+
+## Verification - Docker (Windows PowerShell)
+
+```powershell
+# Start stack and run migrations
+docker compose up -d --build
+docker compose exec api alembic upgrade head
+
+# Health check
+Invoke-RestMethod -Method Get -Uri http://localhost:8000/healthz
+
+# Auth
+$Username = "reviewer$((Get-Random -Maximum 99999))"; $Password = "secret123"
+$AuthBody = @{ username = $Username; password = $Password } | ConvertTo-Json
+$register = Invoke-RestMethod -Method Post -Uri http://localhost:8000/auth/register -ContentType 'application/json' -Body $AuthBody -ErrorAction SilentlyContinue
+$token = $register.access_token; if (-not $token) { $token = (Invoke-RestMethod -Method Post -Uri http://localhost:8000/auth/login -ContentType 'application/json' -Body $AuthBody).access_token }
+$Headers = @{ Authorization = "Bearer $token" }
+
+# Create 10 books, then list/sort/get/update/delete
+$books = @(
+  @{ title = "Dune"; year = 1965; authors = @('Frank Herbert') },
+  @{ title = "The Hobbit"; year = 1937; authors = @('J. R. R. Tolkien') },
+  @{ title = "Neuromancer"; year = 1984; authors = @('William Gibson') },
+  @{ title = "Foundation"; year = 1951; authors = @('Isaac Asimov') },
+  @{ title = "Snow Crash"; year = 1992; authors = @('Neal Stephenson') },
+  @{ title = "Hyperion"; year = 1989; authors = @('Dan Simmons') },
+  @{ title = "2001: A Space Odyssey"; year = 1968; authors = @('Arthur C. Clarke') },
+  @{ title = "Brave New World"; year = 1932; authors = @('Aldous Huxley') },
+  @{ title = "Fahrenheit 451"; year = 1953; authors = @('Ray Bradbury') },
+  @{ title = "Do Androids Dream of Electric Sheep?"; year = 1968; authors = @('Philip K. Dick') }
+)
+foreach ($b in $books) { $payload = @{ title = $b.title; published_year = $b.year; genres = @('Science'); author_names = $b.authors } | ConvertTo-Json; $created = Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/v1/books/ -Headers $Headers -ContentType 'application/json' -Body $payload -ErrorAction SilentlyContinue; if ($created -and $created.id) { $bookId = $created.id } }
+Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/v1/books?page=1&size=10&sort=author" | ConvertTo-Json -Depth 6
+Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/v1/books/$bookId"
+Invoke-RestMethod -Method Put -Uri "http://localhost:8000/api/v1/books/$bookId" -Headers $Headers -ContentType 'application/json' -Body '{"title":"Dune (Updated)"}'
+Invoke-RestMethod -Method Delete -Uri "http://localhost:8000/api/v1/books/$bookId" -Headers $Headers
+
+# Fuzzy search
+Invoke-RestMethod -Method Get -Uri "http://localhost:8000/api/v1/books/search?q=Dune&limit=10" | ConvertTo-Json -Depth 6
+
+# Bulk upload (create books.json first)
+@'
+[
+  {"title":"The Hobbit","published_year":1937,"genres":["Fantasy"],"author_names":["J. R. R. Tolkien"]},
+  {"title":"Neuromancer","published_year":1984,"genres":["Science"],"author_names":["William Gibson"]}
+]
+'@ | Set-Content -Path books.json -Encoding UTF8
+curl.exe -X POST "http://localhost:8000/api/v1/books/bulk-upload" -H "Authorization: Bearer $token" -F "file=@books.json;type=application/json"
+```
+
+## Verification - Local (Windows PowerShell)
+
+```powershell
+# venv setup
+py -3.12 -m venv .venv; & .\.venv\Scripts\Activate.ps1; pip install -e ".[dev]"
+
+# Run DB migrations (requires local Postgres per Local Development section)
+alembic upgrade head
+
+# Start app locally
+uvicorn app.main:app --reload
+
+# Health check
+Invoke-RestMethod -Method Get -Uri http://localhost:8000/healthz
+
+# Auth + CRUD + search + bulk upload
+$Username = "reviewer$((Get-Random -Maximum 99999))"; $Password = "secret123"
+$AuthBody = @{ username = $Username; password = $Password } | ConvertTo-Json
+$register = Invoke-RestMethod -Method Post -Uri http://localhost:8000/auth/register -ContentType 'application/json' -Body $AuthBody -ErrorAction SilentlyContinue
+$token = $register.access_token; if (-not $token) { $token = (Invoke-RestMethod -Method Post -Uri http://localhost:8000/auth/login -ContentType 'application/json' -Body $AuthBody).access_token }
+$Headers = @{ Authorization = "Bearer $token" }
+```
 
 ## Development
 
@@ -179,6 +251,12 @@ Key variables:
 - `SECRET_KEY` - JWT signing secret
 - `ENVIRONMENT` - Application environment (development/production)
 
+## Observability
+
+- Structured JSON logs via structlog with request correlation.
+- Fields include: `timestamp`, `level`, `logger`, `request_id`, `user_id` (if authenticated), `method`, `path`, `status_code`, `latency_ms`.
+- Request ID is propagated through `X-Request-ID` header.
+
 ## Contributing
 
 1. Fork the repository
@@ -197,12 +275,12 @@ MIT License - see LICENSE file for details.
 This project follows a milestone-based development approach:
 
 - **M0** - Repository Bootstrap ✅
-- **M1** - DB Layer & Migrations
-- **M2** - Schemas & Validation Rules
-- **M3** - CRUD Endpoints
-- **M4** - Authentication & Authorization
-- **M5** - Bulk Upload
-- **M6** - Fuzzy Search
-- **M7** - Error Handling & Observability
-- **M8** - Documentation & DX
-- **M9** - CI/CD & Release
+- **M1** - DB Layer & Migrations ✅
+- **M2** - Schemas & Validation Rules ✅
+- **M3** - CRUD Endpoints (list/create/get/update/delete, sort/filter) ✅
+- **M4** - Authentication & Authorization (JWT, protected routes) ✅
+- **M5** - Bulk Upload ✅
+- **M6** - Fuzzy Search ✅
+- **M7** - Error Handling & Observability (request id, JSON logs) ✅
+- **M8** - Documentation & DX ✅
+- **M9** - CI ✅

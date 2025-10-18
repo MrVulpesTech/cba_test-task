@@ -13,6 +13,7 @@ logs/
 !.env.example
 .vscode/
 .idea/
+.cursor/
 *.swp
 .coverage
 htmlcov/
@@ -24,5 +25,5 @@ app/db/migrations/__pycache__/
 *.md
 !README.md
 
-# Cursor workspace
-.cursor/
+# Local artifacts
+books.json
