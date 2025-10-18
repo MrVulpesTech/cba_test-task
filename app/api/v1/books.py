@@ -54,9 +54,10 @@ async def list_books(
 
 
 @router.get("/search", response_model=list[BookRead], summary="Fuzzy search books")
-async def search_books(q: str, limit: int = 20, session: AsyncSession = Depends(get_async_session)):
+async def search_books(q: str | None = None, query: str | None = None, limit: int = 20, session: AsyncSession = Depends(get_async_session)):
     service = BooksService(session)
-    return await service.search(q, limit)
+    term = q or query or ""
+    return await service.search(term, limit)
 
 
 @router.get("/{book_id}", response_model=BookRead, summary="Get book by id")

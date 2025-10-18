@@ -90,6 +90,33 @@ A book management system built with FastAPI and PostgreSQL, featuring JWT authen
 - `DELETE /api/v1/books/{id}` - Delete book (auth required)
 - `POST /api/v1/books/bulk-upload` - Bulk upload JSON (auth required)
 - `GET /api/v1/books/search` - Fuzzy search
+## Database Schema
+
+Tables and relationships (normalized):
+
+- `book`
+  - `id` (PK, integer, auto-increment)
+  - `title` (varchar(255), indexed, required)
+  - `published_year` (int, nullable)
+  - `genres` (varchar(255), comma-separated values)
+
+- `author`
+  - `id` (PK, integer, auto-increment)
+  - `name` (varchar(255), unique, indexed, required)
+
+- `book_author` (many-to-many association)
+  - `id` (PK, integer, auto-increment)
+  - `book_id` (FK → `book.id`, ON DELETE CASCADE)
+  - `author_id` (FK → `author.id`, ON DELETE CASCADE)
+  - Unique constraint on (`book_id`, `author_id`)
+
+- `user`
+  - `id` (PK, integer, auto-increment)
+  - `username` (varchar(255), unique)
+  - `email` (varchar(255), unique, optional)
+  - `hashed_password` (varchar(255))
+
+Migrations are managed by Alembic (`alembic.ini`, `app/db/migrations/`).
 
 ### Authentication
 - `POST /auth/register` - User registration
